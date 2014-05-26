@@ -127,3 +127,54 @@ endif
 if USE_AIKGEN
   SUBDIRS += aikgen
 endif
+
+#GCOV ADD
+gcov-prehook: gcov-prehook-recursive
+gcov-prehook-recursive:
+	for lib_dir in $(SUBDIRS); do \
+	  if [ $$lib_dir != "." ]; then \
+	    $(MAKE) gcov-prehook -C $$lib_dir; \
+	  fi; \
+	done
+
+# Create on every host executing strongswan directories where we'll rapatriate coverage results
+gcov-posthook: gcov-posthook-recursive
+gcov-posthook-recursive:
+	for lib_dir in $(SUBDIRS); do \
+	  if [ $$lib_dir != "." ]; then \
+	    $(MAKE) gcov-posthook -C $$lib_dir; \
+	  fi; \
+	done
+
+# Host VM from which we pick results
+HOST=$(HOST)
+# Host's address connection
+HOSTLOGIN=$(HOSTLOGIN)
+# Tests directory
+TESTRESULTSDIR=$(TESTRESULTSDIR)
+
+# Create in the user-space directories where we'll rapatriate coverage results 
+create-gcov-results-directories:
+	for lib_dir in $(SUBDIRS); do \
+	  if [ $$lib_dir != "." ]; then \
+	    mkdir -p $$TESTRESULTSDIR/cov/$$HOST/html/$$lib_dir; \
+	    cd $$lib_dir; \
+	    if [ -d "plugins" ]; then \
+	      cd "plugins"; \
+	      for plug_dir in `ls -d */ | xargs -n1 basename`; do \
+	      	mkdir -p $$TESTRESULTSDIR/cov/$$HOST/html/$$lib_dir/plugins/$$plug_dir; \
+	      done; \
+	      cd ..; \
+	    fi; \
+	    cd ..; \
+	  fi; \
+	done
+
+# Update web site in order to integrate all results for A GIVEN HOST
+test-gcov-final:
+	mkdir -p $$TESTRESULTSDIR/html/general
+	lcov --directory $(CURDIR) \
+		--capture \
+		--output-file  $$TESTRESULTSDIR/general.info \
+		&& genhtml -o $$TESTRESULTSDIR/html/general $$TESTRESULTSDIR/general.info
+#END of GCOV ADD

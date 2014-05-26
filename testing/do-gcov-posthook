@@ -66,7 +66,7 @@ done
 ##############################################################################
 # execute gcov-posthook on each host
 
-# Note that lcov et genhtml are launched on every host in the followinf order
+# Note that lcov et genhtml are launched on every host in the following order
 # Step 1 : launch lcov & genhtml on a given host
 # Step 2 : recursively get results on root@<my machine> from root@$host
 # Yes, make is launched AFTER ssh connection, which is the contrary of do-gcov-prehook's order

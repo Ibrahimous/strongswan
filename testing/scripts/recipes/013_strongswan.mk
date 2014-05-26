@@ -3,7 +3,9 @@
 PV  = $(SWANVERSION)
 PKG = strongswan-$(PV)
 TAR = $(PKG).tar.bz2
-SRC = http://download.strongswan.org/$(TAR)
+#We do not want Strongswan to be downloaded from strongswan.org
+#It means that the archive HAS to be there !
+#SRC = http://download.strongswan.org/$(TAR)
 
 NUM_CPUS := $(shell getconf _NPROCESSORS_ONLN)
 
@@ -47,7 +49,6 @@ CONFIG_OPTS = \
 	--enable-imv-swid \
 	--enable-sql \
 	--enable-sqlite \
-	--enable-attr-sql \
 	--enable-mediation \
 	--enable-openssl \
 	--enable-blowfish \
@@ -79,17 +80,17 @@ CONFIG_OPTS = \
 	--enable-acert \
 	--enable-cmd \
 	--enable-libipsec \
-	--enable-kernel-libipsec \
 	--enable-tkm \
 	--enable-ntru \
-	--enable-lookip
+	--enable-lookip\
+	--enable-monolithic
 
 export ADA_PROJECT_PATH=/usr/local/ada/lib/gnat
 
 all: install
 
-$(TAR):
-	wget $(SRC)
+#$(TAR):
+#	wget $(SRC)
 
 $(PKG): $(TAR)
 	tar xfj $(TAR)
