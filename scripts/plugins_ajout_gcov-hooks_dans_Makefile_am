@@ -1,0 +1,13 @@
+#GCOV HOOKS
+LIB_DIR=$(basename $(dirname $(dirname $(pwd))))
+CURRENT_DIR=$(basename $(pwd))
+gcov-prehook: test-prehook-base
+	lcov --directory $(CURDIR)/.libs --zerocounters
+#Creates on every hosts executing Strongswan directories where code coverage tests can be stored
+gcov-posthook:
+	lcov --directory $(CURDIR)/.libs --capture --output-file ~/testresults/html/$$LIB_DIR/plugins/$$CURRENT_DIR/$$CURRENT_DIR.info \
+	&& genhtml -o ~/testresults/html/$$LIB_DIR/plugins/$$CURRENT_DIR/$$CURRENT_DIR ~/testresults/html/$$LIB_DIR/plugins/$$CURRENT_DIR/$$CURRENT_DIR.info
+#Creates test directory for the current LIBRARY on a given HOST
+test-prehook-base:
+	mkdir -p ~/testresults/html/$$LIB_DIR/plugins/$$CURRENT_DIR
+#END OF GCOV HOOKS

@@ -1,0 +1,26 @@
+#GCOV HOOKS
+LIB_DIR=$(basename $(pwd))
+gcov-prehook: test-prehook-base gcov-prehook-recursive
+gcov-prehook-recursive:
+	for lib_dir in $(SUBDIRS); do \
+	  if [ $$lib_dir != "." ]; then \
+	    $(MAKE) gcov-prehook -C $$lib_dir; \
+	  elif [ $$lib_dir == "." ]; then \
+	    lcov --directory $(CURDIR)/.libs --zerocounters; \
+	  fi; \
+	done
+#Creates on every hosts executing Strongswan directories where code coverage tests can be stored
+gcov-posthook: gcov-posthook-recursive
+gcov-posthook-recursive:
+	for lib_dir in $(SUBDIRS); do \
+	  if [ $$lib_dir != "." ]; then \
+	    $(MAKE) gcov-posthook -C $$lib_dir; \
+	  elif [ $$lib_dir == "." ]; then \
+	    lcov --directory $(CURDIR)/.libs --capture --output-file ~/testresults/html/$$LIB_DIR/$$LIB_DIR.info \
+	    && genhtml -o ~/testresults/html/$$LIB_DIR/ ~/testresults/html/testresults/html/$$LIB_DIR/$$LIB_DIR.info; \
+	  fi; \
+	done
+#Creates test directory for the current LIBRARY on a given HOST
+test-prehook-base:
+	mkdir -p ~/testresults/html/$$LIB_DIR && pmccabe -c $(CURDIR)/*.c | sort -g > ~/testresults/cyclomatic_number_$$LIB_DIR.txt
+#END OF GCOV HOOKS

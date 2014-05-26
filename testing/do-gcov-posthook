@@ -1,0 +1,91 @@
+#!/bin/bash
+# Automatically execute gcov posthook on host directories
+
+DIR=$(dirname `readlink -f $0`)
+. $DIR/testing.conf
+. $DIR/scripts/function.sh
+SSHCONF="-F $DIR/ssh_config"
+
+[ -d $DIR/hosts ] || die "Directory 'hosts' not found"
+[ -d $DIR/tests ] || die "Directory 'tests' not found"
+[ -d $BUILDDIR ] ||
+	die "Directory '$BUILDDIR' does not exist, please run make-testing first"
+
+ln -sfT $DIR $TESTDIR/testing
+
+##############################################################################
+# assign IP for each host to hostname
+#
+
+for host in $STRONGSWANHOSTS
+do
+    eval ipv4_${host}="`echo $HOSTNAMEIPV4 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $1 }' | awk '{ print $1 }'`"
+    eval ipv6_${host}="`echo $HOSTNAMEIPV6 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $1 }' | awk '{ print $1 }'`"
+
+    case $host in
+    moon)
+        eval ipv4_moon1="`echo $HOSTNAMEIPV4 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        eval ipv6_moon1="`echo $HOSTNAMEIPV6 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        ;;
+    sun)
+        eval ipv4_sun1="`echo $HOSTNAMEIPV4 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        eval ipv6_sun1="`echo $HOSTNAMEIPV6 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        ;;
+    alice)
+        eval ipv4_alice1="`echo $HOSTNAMEIPV4 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        eval ipv6_alice1="`echo $HOSTNAMEIPV6 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        ;;
+    venus)
+        ;;
+    bob)
+        ;;
+    carol)
+        eval ipv4_carol1="`echo $HOSTNAMEIPV4 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        eval ipv6_carol1="`echo $HOSTNAMEIPV6 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+         ;;
+    dave)
+        eval ipv4_dave1="`echo $HOSTNAMEIPV4 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        eval ipv6_dave1="`echo $HOSTNAMEIPV6 | sed -n -e "s/^.*${host},//gp" | awk -F, '{ print $2 }' | awk '{ print $1 }'`"
+        ;;
+    winnetou)
+        ;;
+    esac
+done
+
+
+##############################################################################
+# open ssh sessions
+#
+for host in $STRONGSWANHOSTS
+do
+    ssh $SSHCONF -N root@`eval echo \\\$ipv4_$host` >/dev/null 2>&1 &
+    eval ssh_pid_$host="`echo $!`"
+    do_on_exit kill `eval echo \\\$ssh_pid_$host`
+done
+
+##############################################################################
+# execute gcov-posthook on each host
+
+# Note that lcov et genhtml are launched on every host in the followinf order
+# Step 1 : launch lcov & genhtml on a given host
+# Step 2 : recursively get results on root@<my machine> from root@$host
+# Yes, make is launched AFTER ssh connection, which is the contrary of do-gcov-prehook's order
+
+for host in $STRONGSWANHOSTS
+do
+	eval HOSTLOGIN=root@\$ipv4_${host}
+	ssh $SSHCONF $HOSTLOGIN 'make gcov-posthook -C ~/shared/compile/strongswan-5.1.1dr1/src && \
+					make test-gcov-final TESTRESULTSDIR=~/testresults -C ~/shared/compile/strongswan-5.1.1dr1/src'
+	scp -r $HOSTLOGIN:/root/testresults/* $TESTRESULTSDIR/cov/$host
+	cat ../test-aux/index.htm > $TESTRESULTSDIR/cov/$host/html/index.html
+	cat ../test-aux/main.html > $TESTRESULTSDIR/cov/$host/html/main.html
+	cat ../test-aux/summary.html > $TESTRESULTSDIR/cov/$host/html/summary.html
+	for csci in `ls $TESTRESULTSDIR/cov/$host/cyclom* | xargs -n1 basename | sed 's#cyclomatic_number_##g' | sed 's#.txt##g'`; do
+		cat ../test-aux/cyclomatic.html > $TESTRESULTSDIR/cov/$host/html/cyclomatic_$csci.html
+		cat $TESTRESULTSDIR/cov/$host/cyclomatic_number_$csci.txt >> $TESTRESULTSDIR/cov/$host/html/cyclomatic_$csci.html
+		cat ../test-aux/cyclomatic_part2.html >> $TESTRESULTSDIR/cov/$host/html/cyclomatic_$csci.html
+	done
+done
+
+#create global index page letting access every host
+cat ../test-aux/cov-index.html > $TESTRESULTSDIR/cov/index.html
