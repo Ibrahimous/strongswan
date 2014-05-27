@@ -56,6 +56,13 @@ echo "Installing software from source"
 RECPDIR=$DIR/recipes
 RECIPES=`ls $RECPDIR/*.mk | xargs -n1 basename`
 execute "cp -r $RECPDIR/patches $LOOPDIR/root/shared/compile" 0
+#ADDED in order not to wget strongswan & use instead the tar.bz2 archive
+PV=$SWANVERSION
+PKG=strongswan-$PV
+TAR=$PKG.tar.bz2
+cp $RECPDIR/$TAR ${LOOPDIR}/root/shared/compile
+log_action "Copying extra archive $TAR"
+#END of ADD
 for r in $RECIPES
 do
 	cp $RECPDIR/$r ${LOOPDIR}/root/shared/compile
